@@ -4,7 +4,7 @@ The tool is a very simple command line tool written in Go.
 The purpose of the tool is to count all files within a specific directory, by file types (extensions).
 This program can be easily extended to count (and sort) by filesize, timestamps, etc.
 
-# Program Usage
+## Program Usage
 
 ```
 go run filetypecount.go -dir=YourDirectory
@@ -12,7 +12,7 @@ go run filetypecount.go -dir=YourDirectory
 
 where `YourDirectory` is a directory path you want to check.
 
-# Sample Usage
+## Sample Usage
 
 For a Go installation folder (Windows OS), the output would be as follow:
 ```
