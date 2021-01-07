@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path"
+	"runtime"
 	"sort"
 	"strings"
 	"sync"
@@ -50,15 +51,18 @@ func main() {
 	var waitgroup sync.WaitGroup
 	waitgroup.Add(1)
 
-	// Resulting map
+	// Resulting map and channels
 	fileTypeMap := make(map[string]int)
-	fileTypeMapMutex := sync.RWMutex{}
+	extensionsChan := make(chan string, 100)
+	limitChan := make(chan int, runtime.NumCPU()*2)
 
 	// Starting from the given directory
-	go scan(*directory, &waitgroup, &fileTypeMap, &fileTypeMapMutex)
+	go count(fileTypeMap, extensionsChan)
+	go scan(*directory, &waitgroup, extensionsChan, limitChan)
 
 	// Waiting for completion
 	waitgroup.Wait()
+	close(extensionsChan)
 	fmt.Println()
 
 	// Printing the resulting map
@@ -77,21 +81,32 @@ func main() {
 	fmt.Printf("Total files: %d, unique file types: %d", totalFilesCount, sortedList.Len())
 }
 
-func scan(directory string, waitgroup *sync.WaitGroup, fileTypeMap *map[string]int, fileTypeMapMutex *sync.RWMutex) {
+func scan(directory string, waitgroup *sync.WaitGroup, extensionsChan chan string, limitChan chan int) {
 	defer waitgroup.Done()
 	fmt.Printf("scanning: %s\n", directory)
 
 	// Scanning the directory
+	limitChan <- 1
 	files, _ := ioutil.ReadDir(directory)
 	for _, file := range files {
 		if file.IsDir() {
 			waitgroup.Add(1)
-			go scan(path.Join(directory, file.Name()), waitgroup, fileTypeMap, fileTypeMapMutex)
+			go scan(path.Join(directory, file.Name()), waitgroup, extensionsChan, limitChan)
 		} else {
 			extension := strings.ToLower(path.Ext(file.Name()))
-			fileTypeMapMutex.Lock()
-			(*fileTypeMap)[extension]++
-			fileTypeMapMutex.Unlock()
+			extensionsChan <- extension
+		}
+	}
+	<-limitChan
+}
+
+func count(fileTypeMap map[string]int, extensionsChan chan string) {
+	for {
+		extension, more := <-extensionsChan
+		if more {
+			fileTypeMap[extension]++
+		} else {
+			return
 		}
 	}
 }
