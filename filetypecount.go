@@ -100,13 +100,8 @@ func scan(directory string, waitgroup *sync.WaitGroup, extensionsChan chan strin
 	<-limitChan
 }
 
-func count(fileTypeMap map[string]int, extensionsChan chan string) {
-	for {
-		extension, more := <-extensionsChan
-		if more {
-			fileTypeMap[extension]++
-		} else {
-			return
-		}
+func count(fileTypeMap map[string]int, extensionsChan <-chan string) {
+	for extension := range extensionsChan {
+		fileTypeMap[extension]++
 	}
 }
